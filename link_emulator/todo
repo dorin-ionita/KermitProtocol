@@ -1,0 +1,11 @@
+-1. nr de secventa trebuie sa fie %64													[x]
+0. fa un checkup vizual la ce ai facut pana acum										[x]
+1. fa sa astepte si partea de ACK si NAK												[x]
+2. implementeaza is aknolwedgement														[x]
+2. ocupa-te de receiver
+3. ma astept sa fie gresit pe la pachet indecsii										[x]
+4. functioneaza memcopy cum ma astept eu in cod? tinand cont de treaba cu lil' endian
+5. pt debugging fa eventual intr-un logfile ca ma astept sa fie multe erori
+6. fa sa se propage return 1 si in main													[x]
+7. modifica 5 in TIME la TIMEOUT														[x]
+8. reciteste cerinta sa vezi daca ai facut tot la sender
