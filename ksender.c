@@ -37,17 +37,19 @@ void create_S_package(msg* t){
     memcpy(&(t->payload[15]), &(crc16_ccitt(t->payload, 15)), 2) ;  // CRC pe primii 9 bytes
     t->payload[16] = EOL;       // MARK
     t->payload[17] = '\0';
+    t->len = strlen(t->payload);
 }
 void create_F_package(msg *t, char* file_name, int current_SEQ){
     t->payload[0] = SOH;        //SOH, mereu 0x01
-    t->payload[1] = 5 + strlen(file_name) + 1;       //5 + lungime camp DATA + \0 pentru numele din data
+    t->payload[1] = 5 + strlen(file_name);       //5 + lungime camp DATA
     t->payload[2] = current_SEQ;        //SEQ
     t->payload[3] = 'F';         //TYPE
-    memcpy(&(t->payload[4]), file_name, strlen(file_name) + 1);
-    memcpy(&(t->payload[4 + strlen(file_name) + 1 + 1]),
-        &(crc16_ccitt(t->payload, 4 + strlen(file_name) + 1 + 1)), 2);
+    memcpy(&(t->payload[4]), file_name, strlen(file_name));
+    memcpy(&(t->payload[4 + strlen(file_name) + 1]),
+        &(crc16_ccitt(t->payload, 4 + strlen(file_name) + 1)), 2);
     t->payload[4 + strlen(file_name) + 1 + 3] = EOL;
     t->payload[4 + strlen(file_name) + 1 + 4] = '\0';
+    t->len = strlen(t->payload);
 }
 
 void create_D_package(msg *t, void* buffer_zone, int buffer_length, int current_SEQ){
@@ -59,6 +61,7 @@ void create_D_package(msg *t, void* buffer_zone, int buffer_length, int current_
     memcpy((&(t->payload[4] + buffer_length)), &(crc16_ccitt(t->payload, 4 + buffer_length)), 2);
     t->payload[4 + payload[4] + buffer_length + 2] = EOL;
     t->payload[4 + payload[4] + buffer_length + 3] = '\0';
+    t->len = strlen(t->payload);
 }
 
 void create_Z_package(msg *t, int current_SEQ){
@@ -70,6 +73,7 @@ void create_Z_package(msg *t, int current_SEQ){
     memcpy(&(t->payload[4]), &(crc16_ccitt(t->payload, 4)), 2);
     t->payload[6] = EOL;
     t->payload[7] = '\0';
+    t->len = strlen(t->payload);
 }
 
 void create_B_package(msg *t, int current_SEQ){
@@ -81,6 +85,7 @@ void create_B_package(msg *t, int current_SEQ){
     memcpy(&(t->payload[4]), &(crc16_ccitt(t->payload, 4)), 2);
     t->payload[6] = EOL;
     t->payload[7] = '\0';
+    t->len = strlen(t->payload);
 }
 
 typedef struct {
@@ -97,17 +102,50 @@ void get_receiver_info_from_ack(msg* answer){
     char eol = answer[8];
 }
 
+int send_name(char argv[], int current_SEQ){
+    msg t;
+    msg *answer;
+    int i;
+    create_F_package(&t, argv, current_SEQ);
+    do{
+        if (send_message(&t) < 0)
+            return 1;
+        for (i = 0 ; i < 3 ; i++){
+            if (answer = receive_message_timeout(5), answer)
+                break; // e garantat ca de la receptor vin doar date corecte
+            if (i == 3)
+                return 1; // Termina conexiunea
+        }
+    } while (!is_acknowledgement(answer));
+    return 0;
+}
+
 void send_file_with_name(char argv[], int current_SEQ){
+    send_name(argv, current_SEQ) ? return 1 : ;;
+    current_SEQ++;
+    int i;
     int file_handler = open(argv, O_RDONLY); // practic am deschis fisierul pentru citire
     int no_of_bytes_read = -1;
-    void *buffer = (void *)malloc(250);
-    // in primul trebuie trimis un pachet de tip S
+    msg t;
+    msg *answer;
+    void *buffer = (void *)malloc(MAXL);
     while (no_of_bytes_read){
-        no_of_bytes_read = read (file_handler, buffer, 250);
+        no_of_bytes_read = read (file_handler, buffer, MAXL);
         if (no_of_bytes_read) {
-            // atunci creeaza pachetul
+            create_D_package(&t, buffer_zone, MAXL, current_SEQ);
+            do{
+                if (send_message(&t) < 0)
+                    return 1;
+                for (i = 0 ; i < 3 ; i++){
+                    if (answer = receive_message_timeout(5), answer)
+                        break; // e garantat ca de la receptor vin doar date corecte
+                if (i == 3)
+                    return 1; // Termina conexiunea
+            } while (!is_acknowledgement(answer));
         }
+        current_SEQ++;
     }
+    
     close(file_handler);
 }
 
