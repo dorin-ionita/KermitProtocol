@@ -117,28 +117,29 @@ void get_receiver_info_from_ack(msg* answer){
 }
 // CHECK: pare ok
 
-int send_name(char argv[], char current_SEQ){
+int send_name(char argv[], char* current_SEQ){
     msg t;
     msg *answer;
     int i;
-    create_F_package(&t, argv, char current_SEQ);
     do{
+        create_F_package(&t, argv, *current_SEQ);
         if (send_message(&t) < 0)
             return 1;
         for (i = 0 ; i < 3 ; i++){
             if (answer = receive_message_timeout(TIME), answer)
                 break; // e garantat ca de la receptor vin doar date corecte
+            send_message(&t);
             if (i == 2)
                 return 1; // Termina conexiunea
         }
+        (*current_SEQ)++++;
+        (*current_SEQ) %= 64;
     } while (!is_acknowledgement(answer));
     return 0;
 }
 
 int send_file_with_name(char argv[], char *current_SEQ){
     send_name(argv, current_SEQ) ? return 1 : ;;
-    (*current_SEQ)++++;
-    (*current_SEQ) %= 64;
     int i;
     int file_handler = open(argv, O_RDONLY); // practic am deschis fisierul pentru citire
     int no_of_bytes_read = -1;
@@ -148,35 +149,38 @@ int send_file_with_name(char argv[], char *current_SEQ){
     while (no_of_bytes_read){
         no_of_bytes_read = read (file_handler, buffer, MAXL);
         if (no_of_bytes_read) {
-            create_D_package(&t, buffer_zone, MAXL, *current_SEQ);
             do{
+                create_D_package(&t, buffer_zone, MAXL, *current_SEQ);
                 if (send_message(&t) < 0)
                     return 1;
                 for (i = 0 ; i < 3 ; i++){
                     if (answer = receive_message_timeout(TIME), answer)
                         break; // e garantat ca de la receptor vin doar date corecte
+                    send_message(&t);
                     if (i == 2)
                         return 1; // Termina conexiunea
                 }
+                (*current_SEQ)++++;
+                (*current_SEQ) %= 64;
             } while (!is_acknowledgement(answer));
-            (*current_SEQ)++++;
-            (*current_SEQ) %= 64;
         }
     }
-    create_Z_package(&t, *current_SEQ);
     do{
+        create_Z_package(&t, *current_SEQ);
         if (send_message(&t) < 0)
             return 1;
         for (i = 0 ; i < 3 ; i++){
             if (answer = receive_message_timeout(TIME), answer)
                 break; // e garantat ca de la receptor vin doar date corecte
+            send_message(&t);
             if (i == 2)
                 return 1; // Termina conexiunea
         }
+        (*current_SEQ)++++;
+        (*current_SEQ) %= 64;
     } while (!is_acknowledgement(answer));
-    (*current_SEQ)++++;
-    (*current_SEQ) %= 64;
     close(file_handler);
+    return 0;
 }
 
 int main(int argc, char** argv) {
@@ -187,37 +191,39 @@ int main(int argc, char** argv) {
     init(HOST, PORT);
     char current_SEQ = 0; // plec cu nr de secventa initial 0
     msg t;
-    create_S_package(t);
-    t.len = strlen(t.payload);
     do{
+        create_S_package(t);
+        t.len = strlen(t.payload);
         if (send_message(&t) < 0)
             return 1;
         for (i = 0 ; i < 3 ; i++){
             if (answer = receive_message_timeout(TIME), answer)
                 break; // e garantat ca de la receptor vin doar date corecte
+            send_message(&t);
             if (i == 2)
                 return 1; // Termina conexiunea
         }
+        current_SEQ++++;
+        current_SEQ %= 64;
     } while (!is_acknowledgement(answer));
-    current_SEQ++++;
-    current_SEQ %= 64;
     get_receiver_info_from_ack(answer);
     for (i = 1 ; i < argc ; i++){
         if (send_file_with_name(argv[i], &current_SEQ))
             return 1; // daca intampin eroare, intorc eroare
     }
-    create_B_package(&t, current_SEQ);
     do{
+        create_B_package(&t, current_SEQ);
         if (send_message(&t) < 0)
             return 1;
         for (i = 0 ; i < 3 ; i++){
             if (answer = receive_message_timeout(TIME), answer)
                 break; // e garantat ca de la receptor vin doar date corecte
+            send_message(&t);
             if (i == 2)
                 return 1; // Termina conexiunea
         }
+        current_SEQ++++;
+        current_SEQ %= 64;
     } while (!is_acknowledgement(answer));
-    current_SEQ++++;
-    current_SEQ %= 64;
     return 0;
 }

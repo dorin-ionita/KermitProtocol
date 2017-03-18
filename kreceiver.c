@@ -84,11 +84,14 @@ int main(int argc, char** argv) {
     char SEQ = 1;
     int file_handler = -1;
     char file_name[500];
+    int allready_received_S = 0;
     while(){
         for (i = 0 ; i < 3; i++){
             if (&r = receive_message_timeout(TIME), &r)
                 break;
-            if (i == 2)
+            if (allready_received_S)
+                send_message(&t);
+            if (i == 2 || (i == 1 && !allready_received_S) )
                 return 1;
         }
         if (!check_S_is_correct(&r)){
@@ -100,6 +103,7 @@ int main(int argc, char** argv) {
         }
         switch (r.payload[3]){
             case 'S':
+                allready_received_S = 1;
                 create_Y_package(&t, SEQ);
                 send_message(&t);
                 SEQ++++;
