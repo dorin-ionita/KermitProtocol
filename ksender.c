@@ -137,7 +137,7 @@ int send_name(char argv[], char current_SEQ){
 
 int send_file_with_name(char argv[], char *current_SEQ){
     send_name(argv, current_SEQ) ? return 1 : ;;
-    (*current_SEQ)++;
+    (*current_SEQ)++++;
     (*current_SEQ) %= 64;
     int i;
     int file_handler = open(argv, O_RDONLY); // practic am deschis fisierul pentru citire
@@ -159,7 +159,7 @@ int send_file_with_name(char argv[], char *current_SEQ){
                         return 1; // Termina conexiunea
                 }
             } while (!is_acknowledgement(answer));
-            (*current_SEQ)++;
+            (*current_SEQ)++++;
             (*current_SEQ) %= 64;
         }
     }
@@ -174,7 +174,7 @@ int send_file_with_name(char argv[], char *current_SEQ){
                 return 1; // Termina conexiunea
         }
     } while (!is_acknowledgement(answer));
-    (*current_SEQ)++;
+    (*current_SEQ)++++;
     (*current_SEQ) %= 64;
     close(file_handler);
 }
@@ -199,7 +199,7 @@ int main(int argc, char** argv) {
                 return 1; // Termina conexiunea
         }
     } while (!is_acknowledgement(answer));
-    current_SEQ++;
+    current_SEQ++++;
     current_SEQ %= 64;
     get_receiver_info_from_ack(answer);
     for (i = 1 ; i < argc ; i++){
@@ -217,7 +217,7 @@ int main(int argc, char** argv) {
                 return 1; // Termina conexiunea
         }
     } while (!is_acknowledgement(answer));
-    current_SEQ++;
+    current_SEQ++++;
     current_SEQ %= 64;
     return 0;
 }

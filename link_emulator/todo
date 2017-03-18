@@ -9,3 +9,7 @@
 6. fa sa se propage return 1 si in main													[x]
 7. modifica 5 in TIME la TIMEOUT														[x]
 8. reciteste cerinta sa vezi daca ai facut tot la sender
+9. in sender oare nu ar trebui sa se incrementeze SEQ fie ca discutam de ACK fie ca discutam de NAK?
+10. trebuie inchis fisierul dupa ce se termina o tranzactie
+11. daca nu exista fisierul ce fac?
+12. defineste functia set_file_handler
