@@ -71,17 +71,19 @@ void check_crc_is_correct(msg *t){
         received_crc[1] == computed_crc[1] && received_crc[0] == computed_crc[0];
 }
 
-
-
 int main(int argc, char** argv) {
+    int i;
     msg r, t;
     init(HOST, PORT);
     char SEQ = 1;
     int file_handler = -1;
+    char file_name[500];
     while(){
-        if (recv_message(&r) < 0) {
-            perror("Receive message");
-            return -1;
+        for (i = 0 ; i < 3; i++){
+            if (&r = receive_message_timeout(TIME), &r)
+                break;
+            if (i == 3)
+                return 1;
         }
         if (!check_S_is_correct(r)){
             create_N_package(t);
@@ -96,19 +98,21 @@ int main(int argc, char** argv) {
                 SEQ++++;
                 break;
             case 'F':
-                file_handler = set_file_handler_from_F(t);
+                memcpy(file_name, &(t.payload[4]), t.payload[1] - 5);
+                file_name[t.payload[1] - 5] = '\0';
+                file_handler = open(file_name, O_APPEND);
                 create_Y_package(&t);
                 send_message(&t);
                 SEQ++++;
                 break;
             case 'D':
-                write_data_in_file(file_handler, t);
+                write(file_handler, &(t.payload[4]), t.payload[1] - 5);
                 create_Y_package(&t);
                 send_message(&t);
                 SEQ++++;
                 break;
             case 'Z':
-                end_writing_in_file(file_handler);
+                close(file_handler);
                 create_Y_package(&t);
                 send_message(&t);
                 SEQ++++;
@@ -123,15 +127,5 @@ int main(int argc, char** argv) {
             break;
     }
 
-    /*
-    printf("[%s] Got msg with payload: %s\n", argv[0], r.payload);
-
-    
-    unsigned short crc = crc16_ccitt(r.payload, r.len);
-    sprintf(t.payload, "CRC(%s)=0x%04X", r.payload, crc);
-    t.len = strlen(t.payload);
-    send_message(&t);*/
-
-	
 	return 0;
 }
