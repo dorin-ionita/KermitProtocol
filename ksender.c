@@ -106,7 +106,7 @@ typedef struct {
 
 ReceiverInfo receiver;
 
-int is_acknowledgement(msg* answer){
+inline int is_acknowledgement(msg* answer){
     return (answer->payload[3] == 'Y');
 }
 
@@ -128,7 +128,7 @@ int send_name(char argv[], char current_SEQ){
         for (i = 0 ; i < 3 ; i++){
             if (answer = receive_message_timeout(TIME), answer)
                 break; // e garantat ca de la receptor vin doar date corecte
-            if (i == 3)
+            if (i == 2)
                 return 1; // Termina conexiunea
         }
     } while (!is_acknowledgement(answer));
@@ -155,7 +155,7 @@ int send_file_with_name(char argv[], char *current_SEQ){
                 for (i = 0 ; i < 3 ; i++){
                     if (answer = receive_message_timeout(TIME), answer)
                         break; // e garantat ca de la receptor vin doar date corecte
-                    if (i == 3)
+                    if (i == 2)
                         return 1; // Termina conexiunea
                 }
             } while (!is_acknowledgement(answer));
@@ -170,7 +170,7 @@ int send_file_with_name(char argv[], char *current_SEQ){
         for (i = 0 ; i < 3 ; i++){
             if (answer = receive_message_timeout(TIME), answer)
                 break; // e garantat ca de la receptor vin doar date corecte
-            if (i == 3)
+            if (i == 2)
                 return 1; // Termina conexiunea
         }
     } while (!is_acknowledgement(answer));
@@ -195,7 +195,7 @@ int main(int argc, char** argv) {
         for (i = 0 ; i < 3 ; i++){
             if (answer = receive_message_timeout(TIME), answer)
                 break; // e garantat ca de la receptor vin doar date corecte
-            if (i == 3)
+            if (i == 2)
                 return 1; // Termina conexiunea
         }
     } while (!is_acknowledgement(answer));
@@ -213,7 +213,7 @@ int main(int argc, char** argv) {
         for (i = 0 ; i < 3 ; i++){
             if (answer = receive_message_timeout(TIME), answer)
                 break; // e garantat ca de la receptor vin doar date corecte
-            if (i == 3)
+            if (i == 2)
                 return 1; // Termina conexiunea
         }
     } while (!is_acknowledgement(answer));
