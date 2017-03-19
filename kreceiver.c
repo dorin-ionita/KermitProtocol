@@ -94,6 +94,7 @@ int check_crc_is_correct(msg * t)
 	       crc_from_structure_string);
 	return (!strcmp(computed_string, crc_from_structure_string));
 }
+// CHECK: pare ok
 
 int is_the_right_message(msg *r, char SEQ){
 	return r->payload[2] == SEQ - 1;
@@ -140,6 +141,10 @@ int main(int argc, char **argv)
 			printf("IGNORE\n");
 			create_Y_package(&t, SEQ);
 			send_message(&t);
+			printf("SENT MESSAGE %c WITH NUMBER %C\n",
+				t.payload[2],t.payload[3]);
+			SEQ += 2;
+			SEQ %= 64;
 			continue;
 		}
 		if (!check_crc_is_correct(r)) {
@@ -148,6 +153,8 @@ int main(int argc, char **argv)
 			create_N_package(&t, SEQ);
 			was_ack = 0;
 			send_message(&t);
+			printf("SENT MESSAGE %c WITH NUMBER %C\n",
+				t.payload[2],t.payload[3]);
 			SEQ += 2;
 			SEQ %= 64;
 			continue;
@@ -160,6 +167,8 @@ int main(int argc, char **argv)
 			was_ack = 1;
 			create_Y_package(&t, SEQ);
 			send_message(&t);
+			printf("SENT MESSAGE %c WITH NUMBER %C\n",
+				t.payload[2],t.payload[3]);
 			SEQ += 2;
 			SEQ %= 64;
 			break;
@@ -172,6 +181,8 @@ int main(int argc, char **argv)
 			was_ack = 1;
 			create_Y_package(&t, SEQ);
 			send_message(&t);
+			printf("SENT MESSAGE %c WITH NUMBER %C\n",
+				t.payload[2],t.payload[3]);
 			SEQ += 2;
 			SEQ %= 64;
 			break;
@@ -181,6 +192,8 @@ int main(int argc, char **argv)
 			was_ack = 1;
 			create_Y_package(&t, SEQ);
 			send_message(&t);
+			printf("SENT MESSAGE %c WITH NUMBER %C\n",
+				t.payload[2],t.payload[3]);
 			SEQ += 2;
 			SEQ %= 64;
 			break;
@@ -190,6 +203,8 @@ int main(int argc, char **argv)
 			was_ack = 1;
 			create_Y_package(&t, SEQ);
 			send_message(&t);
+			printf("SENT MESSAGE %c WITH NUMBER %C\n",
+				t.payload[2],t.payload[3]);
 			SEQ += 2;
 			SEQ %= 64;
 			break;
@@ -198,6 +213,8 @@ int main(int argc, char **argv)
 			was_ack = 1;
 			create_Y_package(&t, SEQ);
 			send_message(&t);
+			printf("SENT MESSAGE %c WITH NUMBER %C\n",
+				t.payload[2],t.payload[3]);
 			SEQ += 2;
 			SEQ %= 64;
 			break;

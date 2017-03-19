@@ -13,3 +13,6 @@
 10. trebuie inchis fisierul dupa ce se termina o tranzactie [x]
 11. daca nu exista fisierul ce fac?
 13. adauga timeout la receiver [x]
+
+
+14. problema e ca uneori Z nu este primit

@@ -22,6 +22,7 @@ void create_S_package(msg* t){
     t->payload[0] = SOH;        //SOH, mereu 0x01
     t->payload[1] = 5 + 11;       //5 + lungime camp DATA
     t->payload[2] = 0x00; //SEQ
+    printf("SEQ SENT FOR S IS%c\n", t->payload[2]);
     t->payload[3] = 'S';         //TYPE
     t->payload[4] = MAXL;        //MAXL
     t->payload[5] = TIME;        //TIME
@@ -48,6 +49,7 @@ void create_F_package(msg *t, char* file_name, char current_SEQ){
     t->payload[0] = SOH;        //SOH, mereu 0x01
     t->payload[1] = 5 + strlen(file_name);       //5 + lungime camp DATA
     t->payload[2] = current_SEQ;        //SEQ
+    printf("SEQ SENT FOR F IS%c\n", t->payload[2]);
     t->payload[3] = 'F';         //TYPE
     memcpy(&(t->payload[4]), file_name, strlen(file_name));
     // ex: pt strlen = 1 avem ca la payload[4] se gaseste sirul,
@@ -65,11 +67,16 @@ void create_D_package(msg *t, void* buffer_zone, int buffer_length, char current
     printf("Buffer length\n%d", buffer_length);
     t->payload[1] = 5 + buffer_length;
     t->payload[2] = current_SEQ;
+    printf("SEQ SENT FOR D IS%c\n", t->payload[2]);
     t->payload[3] = 'D';
     memcpy((&(t->payload[4])), buffer_zone, buffer_length);
     unsigned short crc = crc16_ccitt(t->payload, 4 + buffer_length);
     memcpy((&(t->payload[4 + buffer_length])), &crc, 2);
-    printf("CRCUL d-ului este %d", crc);
+    //printf("CRCUL d-ului este %d", crc);
+/*    char debug_crc[50];
+    sprintf(debug_crc,
+        "%hu", t->payload[4 + buffer_length]);
+    printf("CRCUL ESTE %s", debug_crc);*/
     t->payload[4 + t->payload[4] + buffer_length + 2] = EOL;
     t->payload[4 + t->payload[4] + buffer_length + 3] = '\0';
     t->len = strlen(t->payload);
@@ -81,6 +88,7 @@ void create_Z_package(msg *t, char current_SEQ){
     t->payload[0] = SOH;
     t->payload[1] = 5;
     t->payload[2] = current_SEQ;
+    printf("SEQ SENT FOR Z IS%c\n", t->payload[2]);
     /* the data part is missing in Z packages */
     t->payload[3] = 'Z';
     unsigned short crc = crc16_ccitt(t->payload, 4);
@@ -95,6 +103,7 @@ void create_B_package(msg *t, char current_SEQ){
     t->payload[0] = SOH;
     t->payload[1] = 5;
     t->payload[2] = current_SEQ;
+    printf("SEQ SENT FOR B IS%c\n", t->payload[2]);
     /* the data part is missing in Z packages */
     t->payload[3] = 'B';
     unsigned short crc = crc16_ccitt(t->payload, 4);
@@ -110,13 +119,14 @@ typedef struct {
     char padc;
     char eol;
 } ReceiverInfo;
-// CHECK: pare ok
+// CHECK: parte ok
 
 ReceiverInfo receiver;
 
 int is_acknowledgement(msg* answer){
     return (answer->payload[3] == 'Y');
 }
+// CHECK: parte ok
 
 void get_receiver_info_from_ack(msg* answer){
     char npad = answer->payload[6];
@@ -128,7 +138,7 @@ void get_receiver_info_from_ack(msg* answer){
 int send_name(char argv[], char* current_SEQ){
     msg t;
     msg *answer;
-    int i;
+    int i; 
     do{
         create_F_package(&t, argv, *current_SEQ);
         if (send_message(&t) < 0)
@@ -142,6 +152,8 @@ int send_name(char argv[], char* current_SEQ){
             if (i == 2)
                 return 1; // Termina conexiunea
         }
+        printf("RECEIVED ANSWER %c WITH NUMBER %c\n", answer->payload[2],
+            answer->payload[3]);
         (*current_SEQ) += 2;
         (*current_SEQ) %= 64;
     } while (!is_acknowledgement(answer));
@@ -161,7 +173,7 @@ int send_file_with_name(char argv[], char *current_SEQ){
         no_of_bytes_read = read (file_handler, buffer, MAXL);
         if (no_of_bytes_read) {
             do{
-                create_D_package(&t, buffer, MAXL, *current_SEQ);
+                create_D_package(&t, buffer, no_of_bytes_read, *current_SEQ);
                 if (send_message(&t) < 0)
                     return 1;
                 for (i = 0 ; i < 3 ; i++){
@@ -173,6 +185,8 @@ int send_file_with_name(char argv[], char *current_SEQ){
                     if (i == 2)
                         return 1; // Termina conexiunea
                 }
+                printf("RECEIVED ANSWER %c WITH NUMBER %c\n", answer->payload[2],
+                    answer->payload[3]);
                 (*current_SEQ) += 2;
                 (*current_SEQ) %= 64;
             } while (!is_acknowledgement(answer));
@@ -190,6 +204,8 @@ int send_file_with_name(char argv[], char *current_SEQ){
             if (i == 2)
                 return 1; // Termina conexiunea
         }
+        printf("RECEIVED ANSWER %c WITH NUMBER %c\n", answer->payload[2],
+            answer->payload[3]);
         (*current_SEQ) += 2;
         (*current_SEQ) %= 64;
     } while (!is_acknowledgement(answer));
@@ -223,6 +239,8 @@ int main(int argc, char** argv) {
             if (i == 2)
                 return 1; // Termina conexiunea
         }
+        printf("RECEIVED ANSWER %c WITH NUMBER %c\n", answer->payload[2],
+            answer->payload[3]);
         current_SEQ += 2;
         current_SEQ %= 64;
     } while (!is_acknowledgement(answer));
@@ -238,12 +256,16 @@ int main(int argc, char** argv) {
             return 1;
         for (i = 0 ; i < 3 ; i++){
             answer = receive_message_timeout(TIME);
-            if (answer)
+            if (answer){
+                printf("AM PRIMIT LA Z ACK CU NR.ORD. %c", answer->payload[2]);
                 break; // e garantat ca de la receptor vin doar date corecte
+            }
             send_message(&t);
             if (i == 2)
                 return 1; // Termina conexiunea
         }
+        printf("RECEIVED ANSWER %c WITH NUMBER %c\n", answer->payload[2],
+            answer->payload[3]);
         current_SEQ += 2;
         current_SEQ %= 64;
     } while (!is_acknowledgement(answer));
