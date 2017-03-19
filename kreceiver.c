@@ -73,12 +73,20 @@ int check_crc_is_correct(msg *t){
      (pentru ca LEN incepe sa se numere de la pozitia 2, cum ar fi)
      deci al2-lea caracter din CRC este la t->payload[1],
      deci primul caracter din CRC este la t->payload[1] - 1 */
-    unsigned short received_crc = t->payload[start_position_of_crc];
+    unsigned short received_crc;
+    printf("the CRC in the structure is %hu", t->payload[start_position_of_crc]);
+    // pare ok
     unsigned short computed_crc = crc16_ccitt(t->payload, start_position_of_crc);
+    printf("COMPUTED CRC FROM INT IS %hu", computed_crc);
+    // pare ok
+    char computer_crc_in_string[15];
+    memcpy(&(computer_crc_in_string[0]), &computed_crc, 2);
+    printf("COMPUTER CRC FROM STRING IS %hu", computer_crc_in_string[0]);
     return received_crc == computed_crc;
 }
 
 int main(int argc, char** argv) {
+    printf("FIRST LINE OF RECEIVER\n");
     int i;
     msg *r, t;
     init(HOST, PORT);
@@ -89,15 +97,33 @@ int main(int argc, char** argv) {
     char prefix[] = "recv_";
     char * full_name;
     while(1){
+        printf("FIRST LINE IN WHILE\n");
+	/*
         for (i = 0 ; i < 3; i++){
-            if (r = receive_message_timeout(TIME), r)
+            printf("i is %d , 1\n", i);
+            r = receive_message_timeout(TIME);
+            printf("msg is %p", r);
+            if (r)
                 break;
+            printf("11\n");
             if (allready_received_S)
                 send_message(&t);
+            printf("111\n");
             if (i == 2 || (i == 1 && !allready_received_S) )
                 return 1;
-        }
+            printf("1111\n");
+        } */
+	   while (1) {
+		  r = receive_message_timeout(TIME);
+		  if (r) {
+            printf("r is %s\n", r->payload);
+            printf("typ is %c\n", r->payload[3]);
+            break;	
+            }	
+	   }
+        printf("2\n");
         if (!check_crc_is_correct(r)){
+            printf("CRC IS CORRECT %d\n", check_crc_is_correct(r));
             create_N_package(&t, SEQ);
             send_message(&t);
             SEQ += 2;
@@ -106,6 +132,7 @@ int main(int argc, char** argv) {
         }
         switch (r->payload[3]){
             case 'S':
+		printf("S package\n");
                 allready_received_S = 1;
                 create_Y_package(&t, SEQ);
                 send_message(&t);
@@ -124,6 +151,7 @@ int main(int argc, char** argv) {
                 SEQ %= 64;
                 break;
             case 'D':
+		printf("D package\n");
                 write(file_handler, &(t.payload[4]), t.payload[1] - 5);
                 create_Y_package(&t, SEQ);
                 send_message(&t);
@@ -131,6 +159,7 @@ int main(int argc, char** argv) {
                 SEQ %= 64;
                 break;
             case 'Z':
+		printf("Z package\n");
                 close(file_handler);
                 create_Y_package(&t, SEQ);
                 send_message(&t);
@@ -138,6 +167,7 @@ int main(int argc, char** argv) {
                 SEQ %= 64;
                 break;
             case 'B':
+		printf("B package\n");
                 create_Y_package(&t, SEQ);
                 send_message(&t);
                 SEQ += 2;

@@ -12,8 +12,10 @@ killall send
 
 ./link_emulator/link speed=$SPEED delay=$DELAY loss=$LOSS corrupt=$CORRUPT &> /dev/null &
 sleep 1
+echo "STARTING RECEIVER"
 ./kreceiver &
 sleep 1
+echo "STARTED RECEIVER, NOW STARTING SENDER"
 
 ./ksender "${FILES[@]}"
 

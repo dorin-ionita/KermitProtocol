@@ -34,10 +34,12 @@ void create_S_package(msg* t){
     t->payload[12] = ZERO;      //RPT
     t->payload[13] = ZERO;      // CAPA
     t->payload[14] = ZERO;      //R
-    unsigned int crc = crc16_ccitt(t->payload, 15);
+    unsigned short crc = crc16_ccitt(t->payload, 15);
+    printf("CRC COMPUTER IN SENDER IS %hu\n", crc);
     memcpy(&(t->payload[15]), &crc, 2) ;  // CRC pe primii 9 bytes
     t->payload[16] = EOL;       // MARK
     t->payload[17] = '\0';
+    printf("CRC READ AFTER COMPUTING IN SENDER %hu\n", t->payload[15]);
     t->len = strlen(t->payload);
 }
 // CHECK: pare ok
@@ -190,10 +192,12 @@ int send_file_with_name(char argv[], char *current_SEQ){
 
 int main(int argc, char** argv) {
     // argc = nr de argumente + 1 (pentru numele executabilului)
+    printf("START SENDER\n");
     int i;
     msg t;
     msg *answer;
     init(HOST, PORT);
+    printf("S1\n");
     char current_SEQ = 0; // plec cu nr de secventa initial 0
     do{
         create_S_package(&t);
@@ -210,6 +214,7 @@ int main(int argc, char** argv) {
         current_SEQ += 2;
         current_SEQ %= 64;
     } while (!is_acknowledgement(answer));
+    printf("S2\n");
     get_receiver_info_from_ack(answer);
     for (i = 1 ; i < argc ; i++){
         if (send_file_with_name(argv[i], &current_SEQ))
