@@ -34,7 +34,8 @@ void create_S_package(msg* t){
     t->payload[12] = ZERO;      //RPT
     t->payload[13] = ZERO;      // CAPA
     t->payload[14] = ZERO;      //R
-    memcpy(&(t->payload[15]), &(crc16_ccitt(t->payload, 15)), 2) ;  // CRC pe primii 9 bytes
+    unsigned int crc = crc16_ccitt(t->payload, 15);
+    memcpy(&(t->payload[15]), &crc, 2) ;  // CRC pe primii 9 bytes
     t->payload[16] = EOL;       // MARK
     t->payload[17] = '\0';
     t->len = strlen(t->payload);
@@ -49,8 +50,8 @@ void create_F_package(msg *t, char* file_name, char current_SEQ){
     memcpy(&(t->payload[4]), file_name, strlen(file_name));
     // ex: pt strlen = 1 avem ca la payload[4] se gaseste sirul,
     // iar la payload[5 (si 6)] se gaseste crc
-    memcpy(&(t->payload[4 + strlen(file_name)]),
-        &(crc16_ccitt(t->payload, 4 + strlen(file_name))), 2);
+    unsigned short crc = crc16_ccitt(t->payload, 4 + strlen(file_name)); 
+    memcpy(&(t->payload[4 + strlen(file_name)]), &crc, 2);
     t->payload[4 + strlen(file_name) + 2] = EOL; // 4 +1 +2 = 7 :D
     t->payload[4 + strlen(file_name) + 3] = '\0';
     t->len = strlen(t->payload);
@@ -63,9 +64,10 @@ void create_D_package(msg *t, void* buffer_zone, int buffer_length, char current
     t->payload[2] = current_SEQ;
     t->payload[3] = 'D';
     memcpy((&(t->payload[4])), buffer_zone, buffer_length);
-    memcpy((&(t->payload[4 + buffer_length])), &(crc16_ccitt(t->payload, 4 + buffer_length)), 2);
-    t->payload[4 + payload[4] + buffer_length + 2] = EOL;
-    t->payload[4 + payload[4] + buffer_length + 3] = '\0';
+    unsigned short crc = crc16_ccitt(t->payload, 4 + buffer_length);
+    memcpy((&(t->payload[4 + buffer_length])), &crc, 2);
+    t->payload[4 + t->payload[4] + buffer_length + 2] = EOL;
+    t->payload[4 + t->payload[4] + buffer_length + 3] = '\0';
     t->len = strlen(t->payload);
 }
 // CHECK: pare ok
@@ -77,7 +79,8 @@ void create_Z_package(msg *t, char current_SEQ){
     t->payload[2] = current_SEQ;
     /* the data part is missing in Z packages */
     t->payload[3] = 'Z';
-    memcpy(&(t->payload[4]), &(crc16_ccitt(t->payload, 4)), 2);
+    unsigned short crc = crc16_ccitt(t->payload, 4);
+    memcpy(&(t->payload[4]), &crc, 2);
     t->payload[6] = EOL;
     t->payload[7] = '\0';
     t->len = strlen(t->payload);
@@ -90,7 +93,8 @@ void create_B_package(msg *t, char current_SEQ){
     t->payload[2] = current_SEQ;
     /* the data part is missing in Z packages */
     t->payload[3] = 'B';
-    memcpy(&(t->payload[4]), &(crc16_ccitt(t->payload, 4)), 2);
+    unsigned short crc = crc16_ccitt(t->payload, 4);
+    memcpy(&(t->payload[4]), &crc, 2);
     t->payload[6] = EOL;
     t->payload[7] = '\0';
     t->len = strlen(t->payload);
@@ -106,14 +110,14 @@ typedef struct {
 
 ReceiverInfo receiver;
 
-inline int is_acknowledgement(msg* answer){
+int is_acknowledgement(msg* answer){
     return (answer->payload[3] == 'Y');
 }
 
 void get_receiver_info_from_ack(msg* answer){
-    char npad = answer[6];
-    char padc = answer[7];
-    char eol = answer[8];
+    char npad = answer->payload[6];
+    char padc = answer->payload[7];
+    char eol = answer->payload[8];
 }
 // CHECK: pare ok
 
@@ -132,14 +136,15 @@ int send_name(char argv[], char* current_SEQ){
             if (i == 2)
                 return 1; // Termina conexiunea
         }
-        (*current_SEQ)++++;
+        (*current_SEQ) += 2;
         (*current_SEQ) %= 64;
     } while (!is_acknowledgement(answer));
     return 0;
 }
 
 int send_file_with_name(char argv[], char *current_SEQ){
-    send_name(argv, current_SEQ) ? return 1 : ;;
+    if (send_name(argv, current_SEQ))
+        return 1;
     int i;
     int file_handler = open(argv, O_RDONLY); // practic am deschis fisierul pentru citire
     int no_of_bytes_read = -1;
@@ -150,7 +155,7 @@ int send_file_with_name(char argv[], char *current_SEQ){
         no_of_bytes_read = read (file_handler, buffer, MAXL);
         if (no_of_bytes_read) {
             do{
-                create_D_package(&t, buffer_zone, MAXL, *current_SEQ);
+                create_D_package(&t, buffer, MAXL, *current_SEQ);
                 if (send_message(&t) < 0)
                     return 1;
                 for (i = 0 ; i < 3 ; i++){
@@ -160,7 +165,7 @@ int send_file_with_name(char argv[], char *current_SEQ){
                     if (i == 2)
                         return 1; // Termina conexiunea
                 }
-                (*current_SEQ)++++;
+                (*current_SEQ) += 2;
                 (*current_SEQ) %= 64;
             } while (!is_acknowledgement(answer));
         }
@@ -176,7 +181,7 @@ int send_file_with_name(char argv[], char *current_SEQ){
             if (i == 2)
                 return 1; // Termina conexiunea
         }
-        (*current_SEQ)++++;
+        (*current_SEQ) += 2;
         (*current_SEQ) %= 64;
     } while (!is_acknowledgement(answer));
     close(file_handler);
@@ -190,9 +195,8 @@ int main(int argc, char** argv) {
     msg *answer;
     init(HOST, PORT);
     char current_SEQ = 0; // plec cu nr de secventa initial 0
-    msg t;
     do{
-        create_S_package(t);
+        create_S_package(&t);
         t.len = strlen(t.payload);
         if (send_message(&t) < 0)
             return 1;
@@ -203,7 +207,7 @@ int main(int argc, char** argv) {
             if (i == 2)
                 return 1; // Termina conexiunea
         }
-        current_SEQ++++;
+        current_SEQ += 2;
         current_SEQ %= 64;
     } while (!is_acknowledgement(answer));
     get_receiver_info_from_ack(answer);
@@ -222,7 +226,7 @@ int main(int argc, char** argv) {
             if (i == 2)
                 return 1; // Termina conexiunea
         }
-        current_SEQ++++;
+        current_SEQ += 2;
         current_SEQ %= 64;
     } while (!is_acknowledgement(answer));
     return 0;
