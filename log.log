@@ -7,11 +7,9 @@ SENDER: astept raspuns pt S, i este 0
 SENDER: astept raspuns pt S, i este 1
 SENDER: astept raspuns pt S, i este 2
 SENDER: a venit raspunsul pt S
-SENDER: am trimis un S
-SENDER: astept raspuns pt S, i este 0
-SENDER: a venit raspunsul pt S
 S2
 Buffer length
-250CRCUL d-ului este 26732Buffer length
-250CRCUL d-ului este 40580===========================
+250CRCUL d-ului este 61105===========================
+Files file1.txt and recv_file1.txt are not the same!
+Files file2.txt and recv_file2.txt are not the same!
 ===========================

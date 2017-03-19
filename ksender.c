@@ -134,8 +134,10 @@ int send_name(char argv[], char* current_SEQ){
         if (send_message(&t) < 0)
             return 1;
         for (i = 0 ; i < 3 ; i++){
-            if (answer = receive_message_timeout(TIME), answer)
+            answer = receive_message_timeout(TIME);
+            if (answer)
                 break; // e garantat ca de la receptor vin doar date corecte
+            printf("Trimit F\n");
             send_message(&t);
             if (i == 2)
                 return 1; // Termina conexiunea
@@ -163,8 +165,10 @@ int send_file_with_name(char argv[], char *current_SEQ){
                 if (send_message(&t) < 0)
                     return 1;
                 for (i = 0 ; i < 3 ; i++){
-                    if (answer = receive_message_timeout(TIME), answer)
+                    answer = receive_message_timeout(TIME);
+                    if (answer)
                         break; // e garantat ca de la receptor vin doar date corecte
+                    printf("Trimit D\n");
                     send_message(&t);
                     if (i == 2)
                         return 1; // Termina conexiunea
@@ -179,7 +183,8 @@ int send_file_with_name(char argv[], char *current_SEQ){
         if (send_message(&t) < 0)
             return 1;
         for (i = 0 ; i < 3 ; i++){
-            if (answer = receive_message_timeout(TIME), answer)
+            answer = receive_message_timeout(TIME);
+            if (answer)
                 break; // e garantat ca de la receptor vin doar date corecte
             send_message(&t);
             if (i == 2)
@@ -209,7 +214,8 @@ int main(int argc, char** argv) {
             return 1;
         for (i = 0 ; i < 3 ; i++){
             printf("SENDER: astept raspuns pt S, i este %d\n",i);
-            if (answer = receive_message_timeout(TIME), answer){
+            answer = receive_message_timeout(TIME);
+            if (answer){
                 printf("SENDER: a venit raspunsul pt S\n");
                 break; // e garantat ca de la receptor vin doar date corecte
             }
@@ -231,7 +237,8 @@ int main(int argc, char** argv) {
         if (send_message(&t) < 0)
             return 1;
         for (i = 0 ; i < 3 ; i++){
-            if (answer = receive_message_timeout(TIME), answer)
+            answer = receive_message_timeout(TIME);
+            if (answer)
                 break; // e garantat ca de la receptor vin doar date corecte
             send_message(&t);
             if (i == 2)

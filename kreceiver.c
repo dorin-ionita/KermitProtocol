@@ -96,7 +96,11 @@ int check_crc_is_correct(msg * t)
 }
 
 int is_the_right_message(msg *r, char SEQ){
-	return r->payload[0] == SEQ - 1;
+	return r->payload[2] == SEQ - 1;
+}
+
+int abs_val(char x, char y){
+	return x - y < 0 ? y -x : x - y;
 }
 
 int main(int argc, char **argv)
@@ -111,6 +115,8 @@ int main(int argc, char **argv)
 	int allready_received_S = 0;
 	char prefix[] = "recv_";
 	char *full_name;
+	char last_mesage_SEQ = -1;
+	int was_ack = 0;
 	while (1) {
 		printf("FIRST LINE IN WHILE\n");
 		while (1) {
@@ -121,25 +127,37 @@ int main(int argc, char **argv)
 				break;
 			}
 		}
-		printf("2\n");
+		printf("2  %c \n", r->payload[2]);
+		// daca mesajul nu e corupt atunci
+		// zi ca ai primit si e corupt si sa dea din nou
+		printf("LAST_MESSAGE_SEQ %c", last_mesage_SEQ);
+		printf("CURRENT_RECEIVED_SEQ %c", r->payload[2]);
+/*		if (abs_val(r->payload[2], last_mesage_SEQ) > 2){
+			printf("missed a pack");
+			continue;
+		}*/
+		if (last_mesage_SEQ == r->payload[2]){
+			printf("IGNORE\n");
+			create_Y_package(&t, SEQ);
+			send_message(&t);
+			continue;
+		}
 		if (!check_crc_is_correct(r)) {
 			printf("CRC IS INCORRECT %d\n",
 			       check_crc_is_correct(r));
 			create_N_package(&t, SEQ);
+			was_ack = 0;
 			send_message(&t);
 			SEQ += 2;
 			SEQ %= 64;
 			continue;
 		}
-/*		if (!is_the_right_message(r, SEQ)){
-			create_Y_package(&t, SEQ);
-			send_message(&t);
-			continue;
-		}*/
+		last_mesage_SEQ = r->payload[2];
 		switch (r->payload[3]) {
 		case 'S':
 			printf("S package\n");
 			allready_received_S = 1;
+			was_ack = 1;
 			create_Y_package(&t, SEQ);
 			send_message(&t);
 			SEQ += 2;
@@ -151,6 +169,7 @@ int main(int argc, char **argv)
 			file_name[t.payload[1] - 5] = '\0';
 			full_name = strcpy(prefix, file_name);
 			file_handler = open(full_name, O_APPEND);
+			was_ack = 1;
 			create_Y_package(&t, SEQ);
 			send_message(&t);
 			SEQ += 2;
@@ -159,6 +178,7 @@ int main(int argc, char **argv)
 		case 'D':
 			printf("D package\n");
 			write(file_handler, &(t.payload[4]), t.payload[1] - 5);
+			was_ack = 1;
 			create_Y_package(&t, SEQ);
 			send_message(&t);
 			SEQ += 2;
@@ -167,6 +187,7 @@ int main(int argc, char **argv)
 		case 'Z':
 			printf("Z package\n");
 			close(file_handler);
+			was_ack = 1;
 			create_Y_package(&t, SEQ);
 			send_message(&t);
 			SEQ += 2;
@@ -174,6 +195,7 @@ int main(int argc, char **argv)
 			break;
 		case 'B':
 			printf("B package\n");
+			was_ack = 1;
 			create_Y_package(&t, SEQ);
 			send_message(&t);
 			SEQ += 2;
