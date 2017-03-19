@@ -35,11 +35,11 @@ void create_S_package(msg* t){
     t->payload[13] = ZERO;      // CAPA
     t->payload[14] = ZERO;      //R
     unsigned short crc = crc16_ccitt(t->payload, 15);
-    printf("CRC COMPUTER IN SENDER IS %hu\n", crc);
+    //printf("CRC COMPUTER IN SENDER IS %hu\n", crc);
     memcpy(&(t->payload[15]), &crc, 2) ;  // CRC pe primii 9 bytes
     t->payload[16] = EOL;       // MARK
     t->payload[17] = '\0';
-    printf("CRC READ AFTER COMPUTING IN SENDER %hu\n", t->payload[15]);
+    //printf("CRC READ AFTER COMPUTING IN SENDER %hu\n", t->payload[15]);
     t->len = strlen(t->payload);
 }
 // CHECK: pare ok
@@ -62,12 +62,14 @@ void create_F_package(msg *t, char* file_name, char current_SEQ){
 
 void create_D_package(msg *t, void* buffer_zone, int buffer_length, char current_SEQ){
     t->payload[0] = SOH;
+    printf("Buffer length\n%d", buffer_length);
     t->payload[1] = 5 + buffer_length;
     t->payload[2] = current_SEQ;
     t->payload[3] = 'D';
     memcpy((&(t->payload[4])), buffer_zone, buffer_length);
     unsigned short crc = crc16_ccitt(t->payload, 4 + buffer_length);
     memcpy((&(t->payload[4 + buffer_length])), &crc, 2);
+    printf("CRCUL d-ului este %d", crc);
     t->payload[4 + t->payload[4] + buffer_length + 2] = EOL;
     t->payload[4 + t->payload[4] + buffer_length + 3] = '\0';
     t->len = strlen(t->payload);
@@ -200,13 +202,17 @@ int main(int argc, char** argv) {
     printf("S1\n");
     char current_SEQ = 0; // plec cu nr de secventa initial 0
     do{
+        printf("SENDER: am trimis un S\n");
         create_S_package(&t);
         t.len = strlen(t.payload);
         if (send_message(&t) < 0)
             return 1;
         for (i = 0 ; i < 3 ; i++){
-            if (answer = receive_message_timeout(TIME), answer)
+            printf("SENDER: astept raspuns pt S, i este %d\n",i);
+            if (answer = receive_message_timeout(TIME), answer){
+                printf("SENDER: a venit raspunsul pt S\n");
                 break; // e garantat ca de la receptor vin doar date corecte
+            }
             send_message(&t);
             if (i == 2)
                 return 1; // Termina conexiunea
