@@ -9,7 +9,7 @@
 #define PORT 10001
 
 #define MAXL 250
-#define TIME 5
+#define TIME 5000
 #define NPAD 0
 #define PADC 0
 #define SOH 0x01
@@ -90,8 +90,8 @@ int check_crc_is_correct(msg * t)
 	char computer_crc_in_string[15];
 	memcpy(&(computer_crc_in_string[0]), &computed_crc, 2);
 	sprintf(computed_string, "%hu", computer_crc_in_string[0]);
-	printf("\nSTRINGURILE DE CRC SUNT:\n%s\n%s\n", computed_string,
-	       crc_from_structure_string);
+	/*printf("\nSTRINGURILE DE CRC SUNT:\n%s\n%s\n", computed_string,
+	       crc_from_structure_string);*/
 	return (!strcmp(computed_string, crc_from_structure_string));
 }
 // CHECK: pare ok
@@ -106,44 +106,64 @@ int abs_val(char x, char y){
 
 int main(int argc, char **argv)
 {
+	printf("FIRST LINE OF RECEIVER\n");
+	int i;
 	msg *r, t;
 	init(HOST, PORT);
-	// am setat conexiunea
 	char SEQ = 1;
-	// numarul curent de secventa
 	int file_handler = -1;
-	// descriptorul de fisier in care voi scrie (se va modifica)
 	char file_name[500];
-	// numele fisierului in care voi scrie
+	int allready_received_S = 0;
 	char prefix[] = "recv_";
-	// prefixul pentru numele fisierului
 	char *full_name;
-	// numele complet al fisierului in care scriu
 	char last_mesage_SEQ = -1;
-	// ultimul SEQ primit
+	int was_ack = 0;
+	char *what_to_show;
+	FILE* file_descriptor;
 	while (1) {
-		// cicleaza la infinit
 		while (1) {
-			r = receive_message_timeout(TIME);
-			if (r) {
-				printf("r is %s\n", r->payload);
-				printf("typ is %c\n", r->payload[3]);
+			r = receive_message_timeout(2*TIME);
+			if (r)
 				break;
-			} else {
-				send_message(&t);
-				continue;
-			}
+			else
+				printf("TIMEOUT\n");
 		}
-		// daca am primit un mesaj in TIME trec mai departe
-		// altfel ..altfe ar trebui sa retrimit ultimul pachet
-		// si sa trec la urmatoarea interatie din while
-		printf("LAST_MESSAGE_SEQ %c \n", last_mesage_SEQ);
-		printf("CURRENT_RECEIVED_SEQ %c", r->payload[2]);
+		// PANA AICI ESTE OK
+		// daca mesajul nu e corupt atunci
+		// zi ca ai primit si e corupt si sa dea din nou
+		printf("Am primit payloadul %s | de tip %c | avand last_seq %c | si current_seq %c | iar CRCul este %d\n",
+				r->payload, r->payload[3], last_mesage_SEQ, r->payload[2],
+			 	check_crc_is_correct(r));
+		if (last_mesage_SEQ == r->payload[2]){
+			printf("Am primit un duplicat, astept alt mesaj\n");
+			continue;
+		}
+/*		if (check_crc_is_correct(r) &&
+				last_mesage_SEQ == r->payload[2]){
+			printf("Repet ACK\n");
+			SEQ -= 2;
+			SEQ %= 64;
+			create_Y_package(&t, SEQ);
+			send_message(&t);
+			printf("SENT MESSAGE %c WITH NUMBER %C\n",
+				t.payload[2],t.payload[3]);
+			SEQ += 2;
+			SEQ %= 64;
+			continue;
+		}*/
+		/* PROBLEMA:
+		 * Daca vine un mesaj corupt, care a fost trimis
+		 * si anterior, atunci programul meu va trimite
+		 * un pachet NAK, teoretic serverul il primeste dupa
+		 * si retransmite ultimul pachet ..care probabil nu
+		 * e cel pentru care eu am trimis NAK.
+		 * Cum rezolv aceasta problema? */
+		/* Daca am primit un duplicat cu un CRC gresit atunci
+		 * doar merg mai departe . Just a workaround */
 		if (!check_crc_is_correct(r)) {
-			printf("CRC IS INCORRECT %d\n",
-			       check_crc_is_correct(r));
+			printf("CRC IS INCORRENTC\n");
 			create_N_package(&t, SEQ);
-			//was_ack = 0;
+			was_ack = 0;
 			send_message(&t);
 			printf("SENT MESSAGE %c WITH NUMBER %C\n",
 				t.payload[2],t.payload[3]);
@@ -151,85 +171,45 @@ int main(int argc, char **argv)
 			SEQ %= 64;
 			continue;
 		}
-		/* daca suma de control nu este corecta
-		 * inseamna ca mesajul a fost corupt, deci trimit un mesaj
-		 * de tip NAK si incrementez numarul de secventa 
-		 */
+		create_Y_package(&t, SEQ);
+		send_message(&t);
+		printf("SENT MESSAGE %c WITH NUMBER %C\n",
+				t.payload[2],t.payload[3]);
+		SEQ += 2;
+		SEQ %= 64;
+		last_mesage_SEQ = r->payload[2];
 		switch (r->payload[3]) {
-			/* Ma uit la ce fel de mesaj am */
 		case 'S':
-			printf("S package\n");
-			create_YS_package(&t);
-			send_message(&t);
-			printf("SENT MESSAGE %c WITH NUMBER %C\n",
-				t.payload[2],t.payload[3]);
-			SEQ += 2;
-			SEQ %= 64;
 			break;
-			/* daca am mesaj de tip S atunci trimit un pachet YS
-			si incrementez numarul de secventa */
 		case 'F':
-			prefix[0] = '\0';
-			strcat(prefix, "recv_");
-			/* daca am mesaj tip F atunci recreez prefixul
-			(pentru ca ulterior se va modifica)
-			si trimit un pachet Y */
-			create_Y_package(&t, SEQ);
-			send_message(&t);
-			printf("SENT MESSAGE %c WITH NUMBER %C\n",
-				t.payload[2],t.payload[3]);
-			printf("VOI DESCHIDE FISIERUL DE SCRIS\n");
+			strcpy(prefix, "recv_");
 			memcpy(file_name, &(r->payload[4]), r->payload[1] - 5);
-			printf("PAYLOADUL ESTE %s", r->payload);
-			file_name[r->payload[1] - 4] = '\0';
-			printf("\n%s file name is", file_name);
-			full_name = strcat(prefix, file_name);
-			printf("\n%s full name\n", full_name);
-			file_handler = open(full_name, O_WRONLY);
-			/* Apoi recreez numele noului fisier si il deschid
-			*/
-			SEQ += 2;
-			SEQ %= 64;
-			/* in cele din urma incrementez numarul de secventa */
+			file_name[r->payload[1] - 5] = '\0';
+			printf("prefix is %s\n", prefix);
+			printf("file_name is %s\n", file_name);
+			strcat(prefix, file_name);
+			printf("FULL NAME IS %s\n", prefix);
+			file_descriptor = fopen(prefix,"wb");
+			printf("%p file_descriptor is \n", file_descriptor);
+			//file_handler = open(full_name, O_APPEND);
 			break;
 		case 'D':
-			printf("D package\n");
-			write(file_handler, &(t.payload[4]), t.payload[1] - 5);
-			create_Y_package(&t, SEQ);
-			send_message(&t);
-			printf("SENT MESSAGE %c WITH NUMBER %C\n",
-				t.payload[2],t.payload[3]);
-			SEQ += 2;
-			SEQ %= 64;
+			printf("YOu've got the D\n");
+			printf("payload %s\n", &(r->payload[4]));
+			strncpy(what_to_show, &(r->payload[4]), r->payload[1] -5);
+			printf("WHAT TO DO IS %s", what_to_show);
+			fwrite(&(r->payload[4]), r->payload[1] - 5, 1, file_descriptor);
 			break;
-			/* Daca e tip D scriu datele, trimit Y si apoi 
-			 * incrementez numarul de secventa */
 		case 'Z':
-			printf("Z package\n");
-			close(file_handler);
-			create_Y_package(&t, SEQ);
-			send_message(&t);
-			printf("SENT MESSAGE %c WITH NUMBER %C\n",
-				t.payload[2],t.payload[3]);
-			SEQ += 2;
-			SEQ %= 64;
+			fclose(file_descriptor);
 			break;
-			/* Daca este Z inchid fisierul si incrementez numarul
-			 * de secventa, trimit si pachet Y */
 		case 'B':
-			printf("B package\n");
-			create_Y_package(&t, SEQ);
-			send_message(&t);
-			printf("SENT MESSAGE %c WITH NUMBER %C\n",
-				t.payload[2],t.payload[3]);
-			SEQ += 2;
-			SEQ %= 64;
 			break;
-			/* Daca e B trimit Y, incrementez nr de secventa*/
 		}
+		SEQ += 2;
+		SEQ %= 64;
 		if (r->payload[3] == 'B')
 			break;
-		/* Daca e b inchid whileul si termin, deci, executia programului */
 	}
 
 	return 0;

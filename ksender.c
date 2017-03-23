@@ -11,12 +11,14 @@
 #define PORT 10000
 
 #define MAXL 250
-#define TIME 5
+#define TIME 5000
 #define NPAD 0
 #define PADC 0
 #define SOH 0x01
 #define EOL 0x0D
 #define ZERO 0x00
+
+char last_SEQ;
 
 void create_S_package(msg* t){
     t->payload[0] = SOH;        //SOH, mereu 0x01
@@ -51,7 +53,6 @@ void create_F_package(msg *t, char* file_name, char current_SEQ){
     t->payload[2] = current_SEQ;        //SEQ
     printf("SEQ SENT FOR F IS%c\n", t->payload[2]);
     t->payload[3] = 'F';         //TYPE
-    printf("Pun numele fisierului %s", file_name);
     memcpy(&(t->payload[4]), file_name, strlen(file_name));
     // ex: pt strlen = 1 avem ca la payload[4] se gaseste sirul,
     // iar la payload[5 (si 6)] se gaseste crc
@@ -142,13 +143,22 @@ int send_name(char argv[], char* current_SEQ){
     int i; 
     do{
         create_F_package(&t, argv, *current_SEQ);
+        printf("Voi trimite un F\n");
         if (send_message(&t) < 0)
             return 1;
         for (i = 0 ; i < 3 ; i++){
             answer = receive_message_timeout(TIME);
+            if (answer && answer->payload[2] == last_SEQ)
+                printf("Discard answer for F\n");
+            else {
+                if (answer){
+                    last_SEQ = answer->payload[2];
+                    printf("Am primit un raspuns pt F\n");
+                }
+            }
             if (answer)
-                break; // e garantat ca de la receptor vin doar date corecte
-            printf("Trimit F\n");
+                break;
+            printf("Voi trimite un F\n");
             send_message(&t);
             if (i == 2)
                 return 1; // Termina conexiunea
@@ -160,34 +170,38 @@ int send_name(char argv[], char* current_SEQ){
     } while (!is_acknowledgement(answer));
     return 0;
 }
-/* Everything seems ok */
 
 int send_file_with_name(char argv[], char *current_SEQ){
     if (send_name(argv, current_SEQ))
         return 1;
-    /* mai intai trimit numele */
     int i;
     int file_handler = open(argv, O_RDONLY); // practic am deschis fisierul pentru citire
-    /* apoi deschid fisierul pentru citire */
     int no_of_bytes_read = -1;
-    /* cati octeti am citit */
     msg t;
     msg *answer;
     void *buffer = (void *)malloc(MAXL);
-    /*aloc un buffer pentru zona Data din pachetul D*/
     while (no_of_bytes_read){
         no_of_bytes_read = read (file_handler, buffer, MAXL);
-        /* citesc din fisier */
         if (no_of_bytes_read) {
             do{
                 create_D_package(&t, buffer, no_of_bytes_read, *current_SEQ);
+                printf("Voi trimite un D\n");
                 if (send_message(&t) < 0)
                     return 1;
                 for (i = 0 ; i < 3 ; i++){
                     answer = receive_message_timeout(TIME);
+                    if (answer && answer->payload[2] == last_SEQ)
+                        printf("Discard answer for D\n");
+                    else{
+                        if (answer){
+                            last_SEQ = answer->payload[2];
+                            printf("Am primit un raspuns pt D\n");
+                        }
+                    }
                     if (answer)
-                        break; // e garantat ca de la receptor vin doar date corecte
+                        break;
                     printf("Trimit D\n");
+                    printf("Voi trimite un D\n");
                     send_message(&t);
                     if (i == 2)
                         return 1; // Termina conexiunea
@@ -198,18 +212,23 @@ int send_file_with_name(char argv[], char *current_SEQ){
                 (*current_SEQ) %= 64;
             } while (!is_acknowledgement(answer));
         }
-        /* daca am citit ceva, cat timp nu s-a inteles mesajul
-         * retransmit acele date */
     }
-    /* repet cat timp mai am date de citit */
     do{
         create_Z_package(&t, *current_SEQ);
         if (send_message(&t) < 0)
             return 1;
         for (i = 0 ; i < 3 ; i++){
             answer = receive_message_timeout(TIME);
+            if (answer && answer->payload[2] == last_SEQ)
+                printf("Discard answer for Z\n");
+            else
+                if (answer){
+                    last_SEQ = answer->payload[2];
+                    printf("Am primit un raspuns pt Z\n");
+                }
             if (answer)
-                break; // e garantat ca de la receptor vin doar date corecte
+                break;
+            printf("Voi trimite un Z\n");
             send_message(&t);
             if (i == 2)
                 return 1; // Termina conexiunea
@@ -219,10 +238,7 @@ int send_file_with_name(char argv[], char *current_SEQ){
         (*current_SEQ) += 2;
         (*current_SEQ) %= 64;
     } while (!is_acknowledgement(answer));
-    /* trimit pachetul Z de sfarsit de fisier cat timp
-    * nu s-a inteles despre ce e vorba */
     close(file_handler);
-    /* inchid fisierul */
     return 0;
 }
 
@@ -233,20 +249,29 @@ int main(int argc, char** argv) {
     msg t;
     msg *answer;
     init(HOST, PORT);
+    printf("S1\n");
     char current_SEQ = 0; // plec cu nr de secventa initial 0
     do{
         printf("SENDER: am trimis un S\n");
         create_S_package(&t);
         t.len = strlen(t.payload);
+        printf("Voi trimite un S\n");
         if (send_message(&t) < 0)
             return 1;
         for (i = 0 ; i < 3 ; i++){
             printf("SENDER: astept raspuns pt S, i este %d\n",i);
-            answer = receive_message_timeout(3 * TIME);
-            if (answer){
-                printf("SENDER: a venit raspunsul pt S\n");
-                break; // e garantat ca de la receptor vin doar date corecte
+            answer = receive_message_timeout(TIME * 3);
+            if (answer && answer->payload[2] == last_SEQ) 
+                printf("Discard answer for S\n");
+            else {
+                if (answer){
+                    last_SEQ = answer->payload[2];
+                    printf("SENDER: a venit raspunsul pt S\n");
+                }
             }
+            if (answer)
+                break;
+            printf("Voi trimite un S\n");
             send_message(&t);
             if (i == 2)
                 return 1; // Termina conexiunea
@@ -256,26 +281,29 @@ int main(int argc, char** argv) {
         current_SEQ += 2;
         current_SEQ %= 64;
     } while (!is_acknowledgement(answer));
-    /* cat timp mesajul nu a fost inteles trimit mesajul */
+    printf("S2\n");
     get_receiver_info_from_ack(answer);
-    /* useless shit */
     for (i = 1 ; i < argc ; i++){
         if (send_file_with_name(argv[i], &current_SEQ))
             return 1; // daca intampin eroare, intorc eroare
     }
-    /* trimit fiecare fisier,
-     * daca apare vreo eroare returnez 1 */
     do{
         create_B_package(&t, current_SEQ);
-        // creez pachetul B
         if (send_message(&t) < 0)
             return 1;
         for (i = 0 ; i < 3 ; i++){
             answer = receive_message_timeout(TIME);
-            if (answer){
-                printf("AM PRIMIT LA Z ACK CU NR.ORD. %c", answer->payload[2]);
-                break; // e garantat ca de la receptor vin doar date corecte
+            if (answer && answer->payload[2] == last_SEQ)
+                printf("Discard answer for Z\n");
+            else {
+                if (answer){
+                    last_SEQ = answer->payload[2];
+                    printf("AM PRIMIT LA Z ACK CU NR.ORD. %c", answer->payload[2]);
+                }
             }
+            if (answer)
+                break;
+            printf("Voi trimite un B\n");
             send_message(&t);
             if (i == 2)
                 return 1; // Termina conexiunea
@@ -285,6 +313,5 @@ int main(int argc, char** argv) {
         current_SEQ += 2;
         current_SEQ %= 64;
     } while (!is_acknowledgement(answer));
-    /* analog pachetul S */
     return 0;
 }
