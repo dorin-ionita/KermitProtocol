@@ -68,6 +68,7 @@ void create_D_package(msg *t, void* buffer_zone, int buffer_length, char current
     t->payload[0] = SOH;
     printf("Buffer length\n%d", buffer_length);
     t->payload[1] = 5 + buffer_length;
+    //printf("\n#MAMAMAMAMAMAEI %d\n", t->payload[1] - 5);
     t->payload[2] = current_SEQ;
     printf("SEQ SENT FOR D IS%c\n", t->payload[2]);
     t->payload[3] = 'D';

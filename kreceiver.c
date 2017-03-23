@@ -120,6 +120,7 @@ int main(int argc, char **argv)
 	int was_ack = 0;
 	char *what_to_show;
 	FILE* file_descriptor;
+	int size_ca_int;
 	while (1) {
 		while (1) {
 			r = receive_message_timeout(2*TIME);
@@ -195,10 +196,12 @@ int main(int argc, char **argv)
 			break;
 		case 'D':
 			printf("YOu've got the D\n");
-			printf("payload %s\n", &(r->payload[4]));
+/*			printf("payload %s\n", &(r->payload[4]));
+			printf("length is%d\n", r->payload[1] - 5);
 			strncpy(what_to_show, &(r->payload[4]), r->payload[1] -5);
-			printf("WHAT TO DO IS %s", what_to_show);
+			printf("WHAT TO DO IS %s\n", what_to_show);*/
 			fwrite(&(r->payload[4]), r->payload[1] - 5, 1, file_descriptor);
+			printf("Done with writting shit\n");
 			break;
 		case 'Z':
 			fclose(file_descriptor);
