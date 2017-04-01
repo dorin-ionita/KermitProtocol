@@ -69,9 +69,12 @@ void create_D_package(msg *t, void* buffer_zone, int buffer_length, char current
     unsigned short crc = crc16_ccitt(t->payload, 4 + buffer_length);
     memcpy((&(t->payload[4 + buffer_length])), &crc, 2);
     t->payload[4 + buffer_length + 2] = EOL;
+    int i;
+    for (i = 0 ; i < 4 + buffer_length + 2; i++)
+        if (t->payload[i] == '\0')
+            printf("AI BELIT PULA\n");
     t->payload[4 + buffer_length + 3] = '\0';
-    t->len = strlen(t->payload);
-    printf("\nt->len is %u", t->len);
+    t->len = 4 + buffer_length + 3;
 }
 
 void create_Z_package(msg *t, char current_SEQ){
@@ -170,6 +173,7 @@ int send_file_with_name(char argv[], char *current_SEQ){
                     answer = receive_message_timeout(TIME);
                     if (answer && answer->payload[2] == last_SEQ){
                         printf("Discard answer for D\n");
+                        i = 0;
                         continue;
                     }
                     else{

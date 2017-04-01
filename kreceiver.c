@@ -68,11 +68,6 @@ void create_N_package(msg * t, char current_SEQ)
 
 int check_crc_is_correct(msg * t)
 {
-	int start_position_of_crc = t->payload[1] - 1;
-	/* t->payload[1] +1 este pozitia ultimul caracter in string
-	   (pentru ca LEN incepe sa se numere de la pozitia 2, cum ar fi)
-	   deci al2-lea caracter din CRC este la t->payload[1],
-	   deci primul caracter din CRC este la t->payload[1] - 1 */
 	char computed_string[50];
 	char crc_from_structure_string[50];
 
@@ -83,20 +78,7 @@ int check_crc_is_correct(msg * t)
 	char computer_crc_in_string[15];
 	memcpy(&(computer_crc_in_string[0]), &computed_crc, 2);
 	sprintf(computed_string, "%hu", computer_crc_in_string[0]);
-	/*printf("\nSTRINGURILE DE CRC SUNT:\n%s\n%s\n", computed_string,
-	       crc_from_structure_string);*/
-return (!strcmp(computed_string, crc_from_structure_string));
-/*	int start_position_of_crc = t->len - 3;
-	char computed_string[50];
-	char crc_from_structure_string[50];
-	sprintf(crc_from_structure_string,
-		"%hu", t->payload[start_position_of_crc]);
-	unsigned short computed_crc =
-	    crc16_ccitt(t->payload, start_position_of_crc);
-	char computer_crc_in_string[15];
-	memcpy(&(computer_crc_in_string[0]), &computed_crc, 2);
-	sprintf(computed_string, "%hu", computer_crc_in_string[0]);
-	return (!strcmp(computed_string, crc_from_structure_string));*/
+	return (!strcmp(computed_string, crc_from_structure_string));
 }
 
 int is_the_right_message(msg *r, char SEQ){
@@ -131,10 +113,10 @@ int main(int argc, char **argv)
 		printf("Am primit payloadul\n%s\n | de tip %c | avand last_seq %c | si current_seq %c | iar CRCul este %d\n",
 				r->payload, r->payload[3], last_mesage_SEQ, r->payload[2],
 			 	check_crc_is_correct(r));
-/*		if (last_mesage_SEQ == r->payload[2]){
+		if (last_mesage_SEQ == r->payload[2]){
 			printf("Am primit un duplicat, astept alt mesaj\n");
 			continue;
-		}*/
+		}
 		if (!check_crc_is_correct(r)) {
 			printf("CRC IS INCORRENTC\n");
 			create_N_package(&t, SEQ);
