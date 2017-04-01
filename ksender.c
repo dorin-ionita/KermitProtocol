@@ -127,6 +127,8 @@ int send_name(char argv[], char* current_SEQ){
             answer = receive_message_timeout(TIME);
             if (answer && answer->payload[2] == last_SEQ){
                 printf("Discard answer for F\n");
+                i = 0;
+                send_message(&t);
                 continue;
             }
             else {
@@ -174,6 +176,7 @@ int send_file_with_name(char argv[], char *current_SEQ){
                     if (answer && answer->payload[2] == last_SEQ){
                         printf("Discard answer for D\n");
                         i = 0;
+                        send_message(&t);
                         continue;
                     }
                     else{
@@ -205,6 +208,8 @@ int send_file_with_name(char argv[], char *current_SEQ){
             answer = receive_message_timeout(TIME);
             if (answer && answer->payload[2] == last_SEQ){
                 printf("Discard answer for Z\n");
+                i = 0;
+                send_message(&t);
                 continue;
             }
             else
@@ -247,6 +252,8 @@ int main(int argc, char** argv) {
             answer = receive_message_timeout(TIME * 3);
             if (answer && answer->payload[2] == last_SEQ){ 
                 printf("Discard answer for S\n");
+                i = 0;
+                send_message(&t);
                 continue;
             }
             else {
@@ -279,6 +286,8 @@ int main(int argc, char** argv) {
             answer = receive_message_timeout(TIME);
             if (answer && answer->payload[2] == last_SEQ){
                 printf("Discard answer for Z\n");
+                i = 0;
+                send_message(&t);
                 continue;
             }
             else {
