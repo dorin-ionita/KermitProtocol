@@ -103,20 +103,17 @@ int main(int argc, char **argv)
 			if (r)
 				break;
 			else{
-				send_message(&t);
-				printf("TIMEOUT\n");
 				can_send_anymore--;
 			}
 		}
+		// Daca nu primesc un mesaj in timp util trimit ultimul
+		// mesaj ACK/NAK
 		if (!can_send_anymore)
-			break;
+			return 1;
+		// Daca am asteptat de 3 ori inchei conexiunea
 		printf("Am primit payloadul\n%s\n | de tip %c | avand last_seq %c | si current_seq %c | iar CRCul este %d\n",
 				r->payload, r->payload[3], last_mesage_SEQ, r->payload[2],
 			 	check_crc_is_correct(r));
-		if (last_mesage_SEQ == r->payload[2]){
-			printf("Am primit un duplicat, astept alt mesaj\n");
-			continue;
-		}
 		if (!check_crc_is_correct(r)) {
 			printf("CRC IS INCORRENTC\n");
 			create_N_package(&t, SEQ);
@@ -126,7 +123,16 @@ int main(int argc, char **argv)
 			SEQ += 2;
 			SEQ %= 64;
 			continue;
-		} else {
+		} else if (last_mesage_SEQ == r->payload[2]){
+			printf("Am primit un duplicat, astept alt mesaj\n");
+			if (check_crc_is_correct(r)){
+				printf("And it has right CRC\n");
+				send_message(&t);
+				continue;
+			}
+			printf("And it doesn't have right CRC\n");
+		}//???
+ 		else {
 			create_Y_package(&t, SEQ);
 			send_message(&t);
 			printf("SENT MESSAGE %c WITH NUMBER %C\n",
@@ -135,6 +141,40 @@ int main(int argc, char **argv)
 			SEQ %= 64;
 			last_mesage_SEQ = r->payload[2];
 		}
+		// Daca mesajul nu este corect atunci trimit un NAK
+		// si astept primirea altui mesaj.
+		// Daca acest mesaj pentru care am trimis NAK avea bitul
+		// de secventa corupt atunci eu practic am trimis NAK
+		// pentru un mesaj duplicat. Serverul oare cum se va comporta?
+		// PROBLEMA ESTE, DECI, MAI SUS!*/
+/*		can_send_anymore = 3;
+		while (can_send_anymore){
+			r = receive_message_timeout(TIME);
+			if (r){
+				break; // <=> mergi mai departe
+			} else{
+				can_send_anymore--;
+				if (SEQ != 1)
+					send_message(&t);
+			}
+		}
+		if (!check_crc_is_correct(r)){
+			create_N_package(&t, SEQ);
+			send_message(&t);
+			SEQ += 2;
+			SEQ %= 64;
+			continue;
+		}
+		if (check_crc_is_correct(r) && r->payload[2] == last_mesage_SEQ){
+			send_message(&t);
+			continue;
+		}
+		printf("\n Am acceptat payloadul %s\n", r->payload);
+		last_mesage_SEQ = r->payload[2];
+		create_Y_package(&t, SEQ);
+		send_message(&t);
+		SEQ += 2;
+		SEQ %= 64;*/
 		switch (r->payload[3]) {
 		case 'S':
 			break;
@@ -147,13 +187,6 @@ int main(int argc, char **argv)
 			file_descriptor = fopen(prefix,"wb");
 			break;
 		case 'D':
-			printf("AM AJUNS AICI\n");
-			printf("\n%u length is", r->len - 6);
-			//printf("\n%u nenorocitul de lungime este\n",r->payload[1] - 5);
-			//strncpy(un_rahat, &(r->payload[4]),r->payload[1] - 5);
-			printf("AM AJUNS SI AICI\n");
-			//un_rahat[r->payload[1] - 5] = '\0';
-			printf("\n### %s voi scrie \n", un_rahat);
 			fwrite(&(r->payload[4]), r->len - 7, 1, file_descriptor);
 			break;
 		case 'Z':
@@ -163,7 +196,7 @@ int main(int argc, char **argv)
 			break;
 		}
 		if (r->payload[3] == 'B'){
-			printf("voi iesi din bucla infinita de primire\n");
+/*			printf("voi iesi din bucla infinita de primire\n");*/
 			break;
 		}
 	}
