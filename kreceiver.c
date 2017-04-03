@@ -70,15 +70,44 @@ int check_crc_is_correct(msg * t)
 {
 	char computed_string[50];
 	char crc_from_structure_string[50];
+	unsigned short crc_from_file;
+	char aux[2];
+/*	memcpy(&crc_from_file,
+		&(t->payload[15]), 2);*/
+	if (t->payload[3] == 'S'){
+		unsigned short computed_crc = crc16_ccitt(t->payload, 15);
+		aux[0] = computed_crc & 0xff;
+		aux[1] = (computed_crc >> 8) & 0xff;
+/*		printf("computer crc is%hu\n", computed_crc);
+		printf("crc from file is %hu\n", crc_from_file);*/
+		if (aux[0] == t->payload[15] && aux[1] == t->payload[16] ){
+			printf("good to go");
+			return 1;
+		}
+		return 0;
+	} else {
+		unsigned short computed_crc = crc16_ccitt(t->payload, t->len  - 3);
+		aux[0] = computed_crc & 0xff;
+		aux[1] = (computed_crc >> 8) & 0xff;
+		if (aux[0] == t->payload[t->len - 3] &&
+			aux[1] == t->payload[t->len - 2]){
+			printf("good to go");
+			return 1;
+		}
+		return 0;
+	}
 
-	sprintf(crc_from_structure_string,
-		"%hu", t->payload[t->len -3]);
+/*	sprintf(crc_from_structure_string,
+		"%hu", t->payload[t->len -3]);//CRCul din fisier
+	memcpy(&(crc_from_structure_string), &(t->payload[t->len - 3]), 
+		2);
+	printf("%hu CRC IS \n", crc_from_structure_string);
 	unsigned short computed_crc =
 	    crc16_ccitt(t->payload, t->len - 3);
 	char computer_crc_in_string[15];
 	memcpy(&(computer_crc_in_string[0]), &computed_crc, 2);
 	sprintf(computed_string, "%hu", computer_crc_in_string[0]);
-	return (!strcmp(computed_string, crc_from_structure_string));
+	return (!strcmp(computed_string, crc_from_structure_string));*/
 }
 
 int is_the_right_message(msg *r, char SEQ){
@@ -96,45 +125,44 @@ int main(int argc, char **argv)
 	FILE* file_descriptor;
 	int can_send_anymore;
 	char un_rahat[5000];
+	int intra_de_ori = 0;
 	while (1) {
+		int intra_de_ori = 0;
 		can_send_anymore = 3;
 		while (can_send_anymore) {
 			r = receive_message_timeout(TIME);
 			if (r)
 				break;
 			else{
-				send_message(&t);
-				printf("TIMEOUT\n");
 				can_send_anymore--;
 			}
 		}
 		if (!can_send_anymore)
-			break;
+			return 1;
 		printf("Am primit payloadul\n%s\n | de tip %c | avand last_seq %c | si current_seq %c | iar CRCul este %d\n",
 				r->payload, r->payload[3], last_mesage_SEQ, r->payload[2],
 			 	check_crc_is_correct(r));
-		if (last_mesage_SEQ == r->payload[2]){
-			printf("Am primit un duplicat, astept alt mesaj\n");
-			continue;
-		}
 		if (!check_crc_is_correct(r)) {
-			printf("CRC IS INCORRENTC\n");
+			//return 1;
+			printf("TRIMIT NAK");
+			int intra_de_ori = 1;
 			create_N_package(&t, SEQ);
 			send_message(&t);
-			printf("SENT MESSAGE %c WITH NUMBER %C\n",
-				t.payload[2],t.payload[3]);
 			SEQ += 2;
 			SEQ %= 64;
 			continue;
+		} else { if (last_mesage_SEQ == r->payload[2]){
+				send_message(&t);
+				continue;
 		} else {
+			if (intra_de_ori)
+				printf("Am intrat de 2 ori\n");
 			create_Y_package(&t, SEQ);
 			send_message(&t);
-			printf("SENT MESSAGE %c WITH NUMBER %C\n",
-				t.payload[2],t.payload[3]);
 			SEQ += 2;
 			SEQ %= 64;
 			last_mesage_SEQ = r->payload[2];
-		}
+		}}
 		switch (r->payload[3]) {
 		case 'S':
 			break;
@@ -147,14 +175,9 @@ int main(int argc, char **argv)
 			file_descriptor = fopen(prefix,"wb");
 			break;
 		case 'D':
-			printf("AM AJUNS AICI\n");
-			printf("\n%u length is", r->len - 6);
-			//printf("\n%u nenorocitul de lungime este\n",r->payload[1] - 5);
-			//strncpy(un_rahat, &(r->payload[4]),r->payload[1] - 5);
-			printf("AM AJUNS SI AICI\n");
-			//un_rahat[r->payload[1] - 5] = '\0';
-			printf("\n### %s voi scrie \n", un_rahat);
-			fwrite(&(r->payload[4]), r->len - 7, 1, file_descriptor);
+			fwrite(&(r->payload[4]), 1, r->len - 7, file_descriptor);
+			// ESTE OK, PENTRU CA SCRIU LUNGIMEA INTREGULUI MESAJ CARE E 
+			// 4+buffer_length+3 - 7 = buffer_length
 			break;
 		case 'Z':
 			fclose(file_descriptor);
@@ -163,7 +186,7 @@ int main(int argc, char **argv)
 			break;
 		}
 		if (r->payload[3] == 'B'){
-			printf("voi iesi din bucla infinita de primire\n");
+/*			printf("voi iesi din bucla infinita de primire\n");*/
 			break;
 		}
 	}
